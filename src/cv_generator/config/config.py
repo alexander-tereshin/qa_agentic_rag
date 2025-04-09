@@ -29,7 +29,9 @@ class Settings(BaseSettings):
     llm_api_url: str = Field(default="http://localhost:11434/v1", description="LLM API URI")
     llm_api_model: str = Field(default="qwen2.5:7b", description="LLM API model")
     workers_num: int = Field(default=20, description="Number of workers")
-    prompt_path: str = Field(..., description="Path of txt with prompt")
+    prompt_path: str = Field(
+        default="src/cv_generator/config/cv_generator_prompt.txt", description="Path of txt with prompt"
+    )
     log_level: LogLevel = Field(default="INFO", description="Logging level (DEBUG, INFO, WARNING, ERROR, CRITICAL)")
     max_retries: int = Field(default=3, description="Max retries of generating single cv")
     retry_delay: int = Field(default=15, description="Retry delay of generating single cv")

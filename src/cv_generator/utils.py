@@ -37,24 +37,23 @@ def escape_all_strings(obj: any) -> any:
     return obj
 
 
-async def generate_random_resume() -> AsyncGenerator[dict]:
-    yield {
-        "name": fake.name(),
-        "phone_number": fake.phone_number(),
-        "desired_job": random.choice(JOBS),  # noqa: S311
-        "years_of_experience": random.randint(0, 15),  # noqa: S311
-    }
-    await asyncio.sleep(0)
-
-
-async def prompts_generator(resume_gen: AsyncGenerator[dict], limit: int | None = None) -> AsyncGenerator[str]:
+async def generate_random_resumes(limit: int) -> AsyncGenerator[dict]:
     count = 0
+    while count < limit:
+        yield {
+            "name": fake.name(),
+            "phone_number": fake.phone_number(),
+            "desired_job": random.choice(JOBS),  # noqa: S311
+            "years_of_experience": random.randint(0, 15),  # noqa: S311
+        }
+        await asyncio.sleep(0)
+        count += 1
+
+
+async def prompts_generator(resume_gen: AsyncGenerator[dict]) -> AsyncGenerator[str]:
     async for resume in resume_gen:
         yield PROMPT_STRUCTURE.format(candidate=resume)
         await asyncio.sleep(0)
-        count += 1
-        if limit and count >= limit:
-            break
 
 
 def save_resume_to_json(resume: Resume) -> Path:
@@ -141,7 +140,7 @@ async def generate_and_save_resume(
                 logger.exception(f"[{task_name}] LaTeX compilation error")
             except Exception as e:
                 logger.exception(f"[{task_name}] Generating resume error", exc_info=e)
-                await asyncio.sleep()
+                await asyncio.sleep(retry_delay)
                 retry_delay = min(retry_delay * 2, settings.max_retry_delay)
                 retries += 1
 
@@ -171,10 +170,9 @@ async def generate_resume_task(
         for _ in range(settings.workers_num)
     ]
     logger.info(f"Spawning {settings.workers_num} workers")
-    resume_gen = generate_random_resume()
 
     async def enqueue_prompts() -> None:
-        async for prompt in prompts_generator(resume_gen, limit=n):
+        async for prompt in prompts_generator(generate_random_resumes(n)):
             await queue.put(prompt)
         for _ in workers:
             await queue.put(None)
