@@ -1,7 +1,7 @@
 import logging
 from pathlib import Path
 
-from src.cv_generator.config.config import settings
+from cv_generator.config.config import settings
 
 
 def setup_logging() -> logging.Logger:

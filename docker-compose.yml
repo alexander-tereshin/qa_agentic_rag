@@ -3,13 +3,27 @@ services:
     env_file:
       - .env
     build:
-      dockerfile: src/cv_generator/Dockerfile
+      dockerfile: cv_generator/Dockerfile
       context: .
     volumes:
       - ./data:/app/data
       - ./logs:/app/logs
-      - ./src/cv_generator:/app/src/cv_generator
-    command: ["uvicorn", "src.cv_generator.main:app", "--host", "0.0.0.0", "--port", "8000", "--reload"]
+      - ./cv_generator/:/app/cv_generator/
+    command: ["uvicorn", "cv_generator.main:app", "--host", "0.0.0.0", "--port", "8000", "--reload"]
     ports:
-      - "8000:8000"
+      - 8000:8000
     restart: always
+    depends_on:
+      - ollama
+  ollama:
+    volumes:
+    - ~/.ollama:/root/.ollama
+    ports:
+      - 11434:11434
+    container_name: ollama
+    environment:
+      - OLLAMA_KEEP_ALIVE=24h
+    pull_policy: always
+    tty: true
+    restart: unless-stopped
+    image: ollama/ollama:latest

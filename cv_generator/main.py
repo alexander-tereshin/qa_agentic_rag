@@ -3,8 +3,8 @@ from typing import Annotated
 
 from fastapi import FastAPI, Query
 
-from src.cv_generator import utils
-from src.cv_generator.config.logger import setup_logging
+from cv_generator.src import utils
+from cv_generator.src.logger import setup_logging
 
 
 logger = setup_logging()
@@ -23,12 +23,10 @@ async def healthcheck() -> dict:
     return {"status": "healthy"}
 
 
-@app.get("/generate")
+@app.get("/generate", tags=["Generation"])
 async def generate_resumes(n: Annotated[int, Query(description="Number of resumes to generate")] = ...) -> dict:
     logger.info(f"Received request to generate {n} resumes")
-
     asyncio.create_task(utils.generate_resume_task(n, logger))  # noqa: RUF006
-
     return {"status": "started", "message": f"Generation of {n} resumes started"}
 
 

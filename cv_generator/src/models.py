@@ -3,7 +3,7 @@ from typing import Literal
 import jinja2
 from pydantic import BaseModel, Field
 
-from src.cv_generator.config.config import PROJECT_ROOT, settings
+from cv_generator.config.config import PROJECT_ROOT, Path, settings
 
 
 class Experience(BaseModel):
@@ -130,12 +130,12 @@ JOBS = [
 ]
 
 jinja_env = jinja2.Environment(
-    loader=jinja2.FileSystemLoader(PROJECT_ROOT / "src/cv_generator/config"),
+    loader=jinja2.FileSystemLoader(Path(settings.latex_template_path).parent),
     comment_start_string="<%",
     comment_end_string="%>",
     autoescape=True,
 )
-latex_template = jinja_env.get_template("cv_template.tex")
+latex_template = jinja_env.get_template(Path(settings.latex_template_path).name)
 
 with (PROJECT_ROOT / settings.prompt_path).open(mode="r") as prompt:
     PROMPT_STRUCTURE = prompt.read()

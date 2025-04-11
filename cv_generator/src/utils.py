@@ -9,8 +9,8 @@ from collections.abc import AsyncGenerator
 from faker import Faker
 from openai import AsyncOpenAI
 
-from src.cv_generator.config.config import CV_DIR, JSON_DIR, LATEX_DIR, Path, settings
-from src.cv_generator.models import JOBS, LATEX_ESCAPE_MAP, PROMPT_STRUCTURE, BaseModel, Resume, latex_template
+from cv_generator.config.config import CV_DIR, JSON_DIR, LATEX_DIR, Path, settings
+from cv_generator.src.models import JOBS, LATEX_ESCAPE_MAP, PROMPT_STRUCTURE, BaseModel, Resume, latex_template
 
 
 fake = Faker(locale="ru_RU")
@@ -45,6 +45,7 @@ async def generate_random_resumes(limit: int) -> AsyncGenerator[dict]:
             "phone_number": fake.phone_number(),
             "desired_job": random.choice(JOBS),  # noqa: S311
             "years_of_experience": random.randint(0, 15),  # noqa: S311
+            "location": fake.country(),
         }
         await asyncio.sleep(0)
         count += 1
@@ -102,6 +103,7 @@ async def generate_and_save_resume(
         retries = 0
         while retries < settings.max_retries:
             try:
+                logger.debug(f"[PROMPT] {prompt}")
                 completion = await llm_api_client.beta.chat.completions.parse(
                     model=settings.llm_api_model,
                     messages=[
@@ -120,20 +122,21 @@ async def generate_and_save_resume(
                     logger.warning(f"[{task_name}] Received empty answer for prompt: {prompt}")
                     continue
 
-                logger.info(f"[{task_name}] Response is recieved")
-                json_file_path = save_resume_to_json(response)
-                logger.info(f"[{task_name}] Json is saved: {json_file_path}")
+                logger.info(f"[{task_name}] Response received")
+
+                json_path = save_resume_to_json(response)
+                logger.info(f"[{task_name}] JSON saved: {json_path}")
 
                 resume = escape_all_strings(response)
-                latex_file_path = LATEX_DIR / f"{Path(json_file_path).stem}.tex"
+                tex_path = LATEX_DIR / f"{Path(json_path).stem}.tex"
+                pdf_path = CV_DIR / tex_path.with_suffix(".pdf").name
 
                 output = latex_template.render(resume)
+                await asyncio.to_thread(tex_path.write_text, output, encoding="utf-8")
+                logger.info(f"[{task_name}] LaTeX saved: {tex_path}")
 
-                await asyncio.to_thread(latex_file_path.write_text, output, encoding="utf-8")
-                logger.info(f"[{task_name}] LaTeX is saved: {latex_file_path}")
-
-                await compile_latex(latex_file_path)
-                logger.info(f"[{task_name}] PDF is compiled: {latex_file_path.with_suffix('.pdf')}")
+                await compile_latex(tex_path)
+                logger.info(f"[{task_name}] PDF compiled: {pdf_path}")
                 break
 
             except subprocess.CalledProcessError:

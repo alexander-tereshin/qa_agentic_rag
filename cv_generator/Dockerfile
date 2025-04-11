@@ -5,13 +5,13 @@ WORKDIR /app
 RUN apt-get update && apt-get install -y \
     ca-certificates\
     curl\
-    # texlive-xetex \
-    # texlive-latex-extra \
-    # texlive-fonts-recommended \
-    # texlive-lang-cyrillic \
-    # texlive-latex-recommended \
-    # latexmk \
-    # fontconfig \
+    texlive-xetex \
+    texlive-latex-extra \
+    texlive-fonts-recommended \
+    texlive-lang-cyrillic \
+    texlive-latex-recommended \
+    latexmk \
+    fontconfig \
     && apt-get clean
 RUN update-ca-certificates
 COPY --from=ghcr.io/astral-sh/uv:latest  /uv /uvx /bin/
