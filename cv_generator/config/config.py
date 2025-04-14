@@ -22,10 +22,7 @@ class LogLevel(str, Enum):
 
 
 class Settings(BaseSettings):
-    model_config = SettingsConfigDict(
-        env_file=PROJECT_ROOT / ".env",
-        env_file_encoding="utf-8",
-    )
+    model_config = SettingsConfigDict(env_file=PROJECT_ROOT / ".env", env_file_encoding="utf-8", extra="allow")
 
     latex_template_path: str = Field(
         default=CONFIG_DIR / "cv_template.tex", description="Path of latex template for cv"

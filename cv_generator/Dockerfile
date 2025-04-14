@@ -20,7 +20,7 @@ COPY pyproject.toml uv.lock ./
 
 RUN uv sync --no-dev --frozen
 
-COPY src/cv_generator src/cv_generator
+COPY cv_generator cv_generator
 
 ENTRYPOINT ["uv", "run"]
 CMD ["uvicorn", "src.cv_generator.main:app", "--host", "0.0.0.0", "--port", "8000", "--reload"]

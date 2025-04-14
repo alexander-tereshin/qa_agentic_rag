@@ -1,29 +1,69 @@
 services:
-  cv_generator:
+  # cv_generator:
+  #   build:
+  #     context: .
+  #     dockerfile: cv_generator/Dockerfile
+  #   env_file:
+  #     - .env
+  #   volumes:
+  #     - ./data:/app/data
+  #     - ./logs:/app/logs
+  #     - ./cv_generator/:/app/cv_generator/
+  #   command: ["uvicorn", "cv_generator.main:app", "--host", "0.0.0.0", "--port", "8000", "--reload"]
+  #   ports:
+  #     - 8000:8000
+  #   restart: always
+
+  postgres:
+    image: postgres:14
+    ports:
+      - "5432:5432"
     env_file:
       - .env
-    build:
-      dockerfile: cv_generator/Dockerfile
-      context: .
-    volumes:
-      - ./data:/app/data
-      - ./logs:/app/logs
-      - ./cv_generator/:/app/cv_generator/
-    command: ["uvicorn", "cv_generator.main:app", "--host", "0.0.0.0", "--port", "8000", "--reload"]
-    ports:
-      - 8000:8000
-    restart: always
-    depends_on:
-      - ollama
-  ollama:
-    volumes:
-    - ~/.ollama:/root/.ollama
-    ports:
-      - 11434:11434
-    container_name: ollama
     environment:
-      - OLLAMA_KEEP_ALIVE=24h
-    pull_policy: always
-    tty: true
-    restart: unless-stopped
-    image: ollama/ollama:latest
+      POSTGRES_DB: ${POSTGRES_DB}
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./db/init.sql:/docker-entrypoint-initdb.d/init.sql:ro
+    restart: always
+    healthcheck:
+      test: ["CMD", "pg_isready", "-U", "${POSTGRES_USER}", "-d", "${POSTGRES_DB}"]
+      interval: 30s
+      retries: 3
+      start_period: 10s
+      timeout: 5s
+
+  data_loader:
+    build:
+      context: .
+      dockerfile: db/Dockerfile
+    depends_on:
+      postgres:
+        condition: service_healthy
+    env_file:
+      - .env
+    environment:
+      - POSTGRES_HOST=postgres
+    volumes:
+      - ./data/resumes_json:/app/data/resumes_json
+    command: ["python", "create_data.py"]
+    restart: "on-failure"
+
+
+  # ollama:
+  #   image: ollama/ollama:latest
+  #   volumes:
+  #   - ~/.ollama:/root/.ollama
+  #   ports:
+  #     - 11434:11434
+  #   container_name: ollama
+  #   environment:
+  #     - OLLAMA_KEEP_ALIVE=24h
+  #   pull_policy: always
+  #   tty: true
+  #   restart: unless-stopped
+
+volumes:
+  postgres_data:
