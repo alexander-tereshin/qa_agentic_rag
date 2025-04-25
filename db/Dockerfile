@@ -2,8 +2,8 @@ FROM python:3.13-slim
 
 WORKDIR /app
 
-COPY db/create_data.py .
+COPY db/load_initial_data.py .
 
 RUN pip install psycopg2-binary
 
-CMD ["python", "create_data.py"]
+CMD ["python", "load_initial_data.py"]

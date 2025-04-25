@@ -33,4 +33,4 @@ async def generate_resumes(n: Annotated[int, Query(description="Number of resume
 if __name__ == "__main__":
     import uvicorn
 
-    uvicorn.run("src.cv_generator.main:app", host="127.0.0.1", port=8000, reload=True)
+    uvicorn.run("cv_generator.main:app", host="0.0.0.0", port=8000, reload=True)  # noqa: S104
