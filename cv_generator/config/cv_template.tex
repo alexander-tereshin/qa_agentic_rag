@@ -1,0 +1,182 @@
+\documentclass[letterpaper,11pt]{article}
+
+\usepackage{latexsym}
+\usepackage[empty]{fullpage}
+\usepackage{titlesec}
+\usepackage{marvosym}
+\usepackage[usenames,dvipsnames]{color}
+\usepackage{verbatim}
+\usepackage{enumitem}
+\usepackage[hidelinks]{hyperref}
+\usepackage{fancyhdr}
+\usepackage[english, russian]{babel}
+\usepackage{tabularx}
+\usepackage{hyphenat}
+\usepackage{fontawesome}
+\usepackage{multicol}
+\input{glyphtounicode}
+
+\pagestyle{fancy}
+\fancyhf{} % clear all header and footer fields
+\fancyfoot{}
+\renewcommand{\headrulewidth}{0pt}
+\renewcommand{\footrulewidth}{0pt}
+
+\addtolength{\oddsidemargin}{-0.5in}
+\addtolength{\evensidemargin}{-0.5in}
+\addtolength{\textwidth}{1in}
+\addtolength{\topmargin}{-.5in}
+\addtolength{\textheight}{1.0in}
+
+\urlstyle{same}
+
+\raggedbottom
+\raggedright
+\setlength{\tabcolsep}{0in}
+\setlength{\footskip}{5pt}
+\titleformat{\section}{
+  \vspace{-4pt}\scshape\raggedright\large
+}{}{0em}{}[\color{black}\titlerule \vspace{-5pt}]
+
+\pdfgentounicode=1
+
+% Custom commands
+
+\newcommand{\resumeItem}[1]{
+  \item\small{
+    {#1 \vspace{-1pt}}
+  }
+}
+
+\newcommand{\resumeSubheading}[4]{
+  \vspace{-2pt}\item
+    \begin{tabular*}{0.97\textwidth}[t]{l@{\extracolsep{\fill}}r}
+      \textbf{#1} & \normalfont{#2} \\
+      \normalfont{#3} & \\
+      \textit{#4} & \\
+    \end{tabular*}\vspace{-5pt}
+}
+
+\newcommand{\resumeProjectHeading}[2]{
+    \vspace{-2pt}\item
+    \begin{tabular*}{0.97\textwidth}{l@{\extracolsep{\fill}}r}
+      \small#1 & #2 \\
+    \end{tabular*}\vspace{-7pt}
+}
+
+\newcommand{\resumeSubItem}[1]{\resumeItem{#1}\vspace{-4pt}}
+
+\renewcommand\labelitemii{$\vcenter{\hbox{\tiny$\bullet$}}$}
+
+\newcommand{\resumeSubHeadingListStart}{\begin{itemize}[leftmargin=0.15in, label={}]}
+\newcommand{\resumeSubHeadingListEnd}{\end{itemize}}
+\newcommand{\resumeItemListStart}{\begin{itemize}}
+\newcommand{\resumeItemListEnd}{\end{itemize}}
+
+\begin{document}
+
+%---------- HEADING ----------
+
+\begin{center}
+  \textbf{\Huge {{ name }} } \\ \vspace{5pt}
+  \textbf{\Large {{ title }} } \\ \vspace{8pt}
+  \small
+
+  {%- set parts = [] %}
+  {%- set _ = parts.append('\\faMobile \\hspace{.5pt} \\href{tel:' ~ contact_info.phone ~ '}{' ~ contact_info.phone ~ '}') %}
+  {%- set _ = parts.append('\\faAt \\hspace{.5pt} \\href{mailto:' ~ contact_info.email ~ '}{' ~ contact_info.email ~ '}') %}
+
+  {%- if contact_info.linkedin %}
+      {%- set linkedin_id = contact_info.linkedin.split('/')[-1] %}
+      {%- set _ = parts.append('\\faLinkedinSquare \\hspace{.5pt} \\href{' ~ contact_info.linkedin ~ '}{' ~ linkedin_id ~ '}') %}
+  {%- endif %}
+
+  {%- if contact_info.github %}
+      {%- set github_id = contact_info.github.split('/')[-1] %}
+      {%- set _ = parts.append('\\faGithub \\hspace{.5pt} \\href{' ~ contact_info.github ~ '}{' ~ github_id ~ '}') %}
+  {%- endif %}
+
+  {%- set _ = parts.append('\\faMapMarker \\hspace{.5pt} ' ~ contact_info.location) %}
+
+  {{ parts | join(' $|$ ') }}
+
+\end{center}
+%----------- SUMMARY -----------
+
+\vspace{-4pt}
+\textit
+{ {{summary}} }
+
+%----------- SKILLS -----------
+
+\section{Навыки}
+  \vspace{2pt}
+  \resumeSubHeadingListStart
+    \small{\item{
+      \textbf{ {{ ", ".join(skills) }} }
+    }}
+  \resumeSubHeadingListEnd
+
+% %----------- EXPERIENCE -----------
+
+\section{Профессиональный опыт}
+  \vspace{3pt}
+  \resumeSubHeadingListStart
+  {% for job in experience %}
+    \resumeSubheading
+      { {{job.job_title}} }{ {{job.start_date}} -- {{job.end_date if job.end_date else 'н.в.'}} }
+      { {{job.company}} }{}
+      \resumeItemListStart
+      {% for achievement in job.achievements %}
+        \resumeItem{ {{achievement}} }
+      {% endfor %}
+      \resumeItemListEnd
+  {% endfor %}
+  \resumeSubHeadingListEnd
+
+% %----------- EDUCATION -----------
+
+\section{Образование}
+  \vspace{3pt}
+  \resumeSubHeadingListStart
+  {% for edu in education %}
+    \resumeSubheading
+      { {{edu.degree}} }{ {{edu.start_date}} -- {{ edu.end_date if edu.end_date else 'н.в.'}} }
+      { {{edu.institution}} }
+      { {{edu.details}} }
+  {% endfor %}
+  \resumeSubHeadingListEnd
+
+%----------- PROJECTS -----------
+
+\section{Проекты}
+    \vspace{3pt}
+    \resumeSubHeadingListStart
+    {% for project in portfolio %}
+      \resumeProjectHeading
+        {\textbf{ {{project.name}} } $|$ \emph{\href{ {{project.link}} }{\color{blue} {{project.link}} }}}{}
+        \resumeItemListStart
+            \resumeItem{ {{project.description}} }
+          \resumeItemListEnd
+    {% endfor %}
+    \resumeSubHeadingListEnd
+
+
+\section{Сертификаты}
+  \vspace{2pt}
+  \resumeSubHeadingListStart
+    \small{\item{
+      { {{", ".join(certifications)}} }
+    }}
+  \resumeSubHeadingListEnd
+
+
+  \section{Хобби}
+  \vspace{2pt}
+  \resumeSubHeadingListStart
+    \small{\item{
+      { {{", ".join(hobbies)}} }
+    }}
+  \resumeSubHeadingListEnd
+
+\end{document}
