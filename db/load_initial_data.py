@@ -32,7 +32,7 @@ conn = psycopg2.connect(
 
 insert_query = """
 INSERT INTO resumes (
-    name, gender, occupation, summary, contact_info,
+    name, gender, title, summary, contact_info,
     skills, experience, education,
     languages, certifications, hobbies, portfolio
 )
@@ -52,7 +52,7 @@ for filepath in json_files:
             (
                 name,
                 resume.get("gender"),
-                resume.get("occupation"),
+                resume.get("title"),
                 resume.get("summary"),
                 json.dumps(resume.get("contact_info")),
                 resume.get("skills"),

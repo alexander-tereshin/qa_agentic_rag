@@ -43,7 +43,7 @@ async def main() -> None:
         [looped_assistant],
         termination_condition=termination_condition,
     )
-    async for _message in team.run_stream(task="""создай таблицу test с полями id, name и age."""):
+    async for _message in team.run_stream(task="создай таблицу test с полями id, name и age."):
         pass
 
     await model_client.close()

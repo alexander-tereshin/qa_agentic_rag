@@ -1,18 +1,17 @@
 services:
-#   cv_generator:
-#     build:
-#       context: .
-#       dockerfile: cv_generator/Dockerfile
-#     env_file:
-#       - .env
-#     volumes:
-#       - ./data:/app/data
-#       - ./logs:/app/logs
-#       - ./cv_generator/:/app/cv_generator/
-#     command: ["uvicorn", "cv_generator.main:app", "--host", "0.0.0.0", "--port", "8000", "--reload"]
-#     ports:
-#       - 8000:8000
-#     restart: always
+  # cv_generator:
+  #   build:
+  #     context: .
+  #     dockerfile: cv_generator/Dockerfile
+  #   env_file:
+  #     - .env
+  #   volumes:
+  #     - ./data:/app/data
+  #     - ./cv_generator/:/app/cv_generator/
+  #   command: ["uvicorn", "cv_generator.main:app", "--host", "0.0.0.0", "--port", "${CV_GENERATOR_PORT}", "--reload"]
+  #   ports:
+  #     - "${CV_GENERATOR_PORT}:${CV_GENERATOR_PORT}"
+  #   restart: always
 
   agent:
     build:
@@ -21,23 +20,25 @@ services:
     env_file:
       - .env
     environment:
-      OLLAMA_HOST: ollama
+      AGENT_LLM_API_URL: http://ollama:${OLLAMA_PORT}/v1
+      AGENT_LLM_API_TOKEN: ${AGENT_LLM_API_TOKEN}
+      AGENT_LLM_API_MODEL: ${AGENT_LLM_API_MODEL}
       POSTGRES_HOST: postgres
-      POSTGRES_PORT: 5432
-    volumes:
-      - ./logs:/app/logs
-      - ./agent/:/app/agent/
-    command: ["uvicorn", "agent.main:app", "--host", "0.0.0.0", "--port", "8001", "--reload"]
+      POSTGRES_PORT: ${POSTGRES_PORT}
+      POSTGRES_DB: ${POSTGRES_DB}
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+    command: ["uv", "run", "--no-sync", "uvicorn", "agent.main:app", "--host", "0.0.0.0", "--port", "${AGENT_PORT}", "--reload"]
     ports:
-      - 8001:8001
+      - "${AGENT_PORT}:${AGENT_PORT}"
     restart: always
     depends_on:
       postgres:
         condition: service_healthy
-      # ollama:
-      #   condition: service_healthy
+      ollama:
+        condition: service_healthy
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:8001/healthcheck"]
+      test: ["CMD", "curl", "-f", "http://localhost:${AGENT_PORT}/healthcheck"]
       interval: 30s
       timeout: 5s
       retries: 3
@@ -46,7 +47,7 @@ services:
   postgres:
     image: postgres:14
     ports:
-      - "5432:5432"
+      - "${POSTGRES_PORT}:${POSTGRES_PORT}"
     env_file:
       - .env
     environment:
@@ -64,63 +65,61 @@ services:
       start_period: 10s
       timeout: 5s
 
-  # data_loader:
-  #   build:
-  #     context: .
-  #     dockerfile: db/Dockerfile
-  #   depends_on:
-  #     postgres:
-  #       condition: service_healthy
-  #   env_file:
-  #     - .env
-  #   environment:
-  #     - POSTGRES_HOST=postgres
-  #   volumes:
-  #     - ./data/resumes_json:/app/data/resumes_json
-  #   command: ["python", "load_initial_data.py"]
-  #   restart: "on-failure"
+  data_loader:
+    build:
+      context: .
+      dockerfile: db/Dockerfile
+    depends_on:
+      postgres:
+        condition: service_healthy
+    env_file:
+      - .env
+    environment:
+      - POSTGRES_HOST=postgres
+    volumes:
+      - ./data/resumes_json:/app/data/resumes_json
+    command: ["python", "load_initial_data.py"]
+    restart: "on-failure"
 
   streamlit:
     build:
       context: .
-      dockerfile: front/Dockerfile
-    command: ["streamlit", "run", "front/streamlit_app.py", "--server.port=8501", "--server.address=0.0.0.0"]
+      dockerfile: streamlit/Dockerfile
+    command: ["streamlit", "run", "streamlit/streamlit_app.py", "--server.port=${STREAMLIT_PORT}"]
     restart: on-failure
     volumes:
       - ./data:/app/data
-      - ./front:/app/front
     ports:
-      - "8501:8501"
+      - "${STREAMLIT_PORT}:${STREAMLIT_PORT}"
     environment:
       PYTHONUNBUFFERED: 1
       STREAMLIT_SERVER_HEADLESS: true
       STREAMLIT_SERVER_ENABLECORS: false
-      AGENT_API_HOST: agent
-      AGENT_API_PORT: 8001
-      AGENT_API_ENDPOINT: "/agent_query"
-    # depends_on:
-    #   agent:
-    #     condition: service_healthy
+      AGENT_HOST: agent
+      AGENT_PORT: ${AGENT_PORT}
+    depends_on:
+      agent:
+        condition: service_healthy
 
-  # ollama:
-  #   image: ollama/ollama:latest
-  #   volumes:
-  #     - ~/.ollama:/root/.ollama
-  #   ports:
-  #     - "11434:11434"
-  #   env_file:
-  #     - .env
-  #   environment:
-  #     - OLLAMA_KEEP_ALIVE=24h
-  #   pull_policy: always
-  #   tty: true
-  #   restart: unless-stopped
-  #   healthcheck:
-  #     test: "ollama --version && ollama ps || exit 1"
-  #     interval: 30s
-  #     timeout: 5s
-  #     retries: 3
-  #     start_period: 10s
+  ollama:
+    image: ollama/ollama:latest
+    volumes:
+      - ~/.ollama:/root/.ollama
+    ports:
+      - "${OLLAMA_PORT}:${OLLAMA_PORT}"
+    env_file:
+      - .env
+    environment:
+      - OLLAMA_KEEP_ALIVE=24h
+    pull_policy: always
+    tty: true
+    restart: unless-stopped
+    healthcheck:
+      test: "ollama --version && ollama ps || exit 1"
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
 
 volumes:
   postgres_data:

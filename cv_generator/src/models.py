@@ -6,6 +6,13 @@ from pydantic import BaseModel, Field
 from cv_generator.config.config import PROJECT_ROOT, Path, settings
 
 
+class CandidateInput(BaseModel):
+    name: str = Field(..., description="Имя кандидата")
+    desired_job: str = Field(..., description="Желаемая должность")
+    years_of_experience: int = Field(..., description="Опыт работы в годах")
+    location: str = Field(..., description="Местоположение")
+
+
 class Experience(BaseModel):
     job_title: str = Field(..., description="Должность")
     company: str = Field(..., description="Компания")
