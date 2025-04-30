@@ -9,8 +9,8 @@ from collections.abc import AsyncGenerator
 from faker import Faker
 from openai import AsyncOpenAI
 
-from cv_generator.config.config import CV_DIR, JSON_DIR, LATEX_DIR, Path, settings
-from cv_generator.src.models import JOBS, LATEX_ESCAPE_MAP, PROMPT_STRUCTURE, BaseModel, Resume, latex_template
+from resume_generator.config.config import CV_DIR, JSON_DIR, LATEX_DIR, Path, settings
+from resume_generator.src.models import JOBS, LATEX_ESCAPE_MAP, PROMPT_STRUCTURE, BaseModel, Resume, latex_template
 
 
 fake = Faker(locale="ru_RU")

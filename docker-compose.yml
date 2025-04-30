@@ -1,14 +1,13 @@
 services:
-  # cv_generator:
+  # resume_generator:
   #   build:
   #     context: .
-  #     dockerfile: cv_generator/Dockerfile
+  #     dockerfile: resume_generator/Dockerfile
   #   env_file:
   #     - .env
   #   volumes:
   #     - ./data:/app/data
-  #     - ./cv_generator/:/app/cv_generator/
-  #   command: ["uvicorn", "cv_generator.main:app", "--host", "0.0.0.0", "--port", "${CV_GENERATOR_PORT}", "--reload"]
+  #   command: ["uv", "run", "--no-sync", "uvicorn", "resume_generator.main:app", "--host", "0.0.0.0", "--port", "${CV_GENERATOR_PORT}", "--reload"]
   #   ports:
   #     - "${CV_GENERATOR_PORT}:${CV_GENERATOR_PORT}"
   #   restart: always
@@ -20,7 +19,7 @@ services:
     env_file:
       - .env
     environment:
-      AGENT_LLM_API_URL: http://ollama:${OLLAMA_PORT}/v1
+      AGENT_LLM_API_URL: http://host.docker.internal:${OLLAMA_PORT}/v1
       AGENT_LLM_API_TOKEN: ${AGENT_LLM_API_TOKEN}
       AGENT_LLM_API_MODEL: ${AGENT_LLM_API_MODEL}
       POSTGRES_HOST: postgres
@@ -35,8 +34,8 @@ services:
     depends_on:
       postgres:
         condition: service_healthy
-      ollama:
-        condition: service_healthy
+      # ollama:
+      #   condition: service_healthy
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:${AGENT_PORT}/healthcheck"]
       interval: 30s
@@ -92,34 +91,34 @@ services:
     ports:
       - "${STREAMLIT_PORT}:${STREAMLIT_PORT}"
     environment:
+      AGENT_HOST: agent
+      AGENT_PORT: ${AGENT_PORT}
       PYTHONUNBUFFERED: 1
       STREAMLIT_SERVER_HEADLESS: true
       STREAMLIT_SERVER_ENABLECORS: false
-      AGENT_HOST: agent
-      AGENT_PORT: ${AGENT_PORT}
     depends_on:
       agent:
         condition: service_healthy
 
-  ollama:
-    image: ollama/ollama:latest
-    volumes:
-      - ~/.ollama:/root/.ollama
-    ports:
-      - "${OLLAMA_PORT}:${OLLAMA_PORT}"
-    env_file:
-      - .env
-    environment:
-      - OLLAMA_KEEP_ALIVE=24h
-    pull_policy: always
-    tty: true
-    restart: unless-stopped
-    healthcheck:
-      test: "ollama --version && ollama ps || exit 1"
-      interval: 30s
-      timeout: 5s
-      retries: 3
-      start_period: 10s
+  # ollama:
+  #   image: ollama/ollama:latest
+  #   volumes:
+  #     - ~/.ollama:/root/.ollama
+  #   ports:
+  #     - "${OLLAMA_PORT}:${OLLAMA_PORT}"
+  #   env_file:
+  #     - .env
+  #   environment:
+  #     - OLLAMA_KEEP_ALIVE=24h
+  #   pull_policy: always
+  #   tty: true
+  #   restart: unless-stopped
+  #   healthcheck:
+  #     test: "ollama --version && ollama ps || exit 1"
+  #     interval: 30s
+  #     timeout: 5s
+  #     retries: 3
+  #     start_period: 10s
 
 volumes:
   postgres_data:

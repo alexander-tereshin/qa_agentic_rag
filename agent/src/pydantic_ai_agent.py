@@ -45,7 +45,7 @@ def sql_engine(query: str) -> str:
     Args:
         query: The query to perform. This should be correct SQL.
 
-    """
+    """  # noqa: E501
     output = ""
     conn = psycopg2.connect(**db_params)
     cursor = conn.cursor()
@@ -75,7 +75,7 @@ sql_tool = Tool(
     takes_ctx=False,
 )
 
-agent = Agent(
+pydantic_ai_agent = Agent(
     openai_model,
     system_prompt="""
     You are an SQL analyst. For that you are provided with a set of tools.

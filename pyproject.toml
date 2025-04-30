@@ -49,6 +49,7 @@ ignore = [
   "COM812",
   "ISC001",
   "RUF001",
+  "RUF002",
 ]
 
 [tool.ruff.lint.isort]
@@ -59,3 +60,6 @@ lines-after-imports = 2
 
 [tool.ruff.lint.extend-per-file-ignores]
 "tests/*.py" = ["S101", "S311"]
+
+[tool.coverage.report]
+exclude_also = ["if typing.TYPE_CHECKING:"]

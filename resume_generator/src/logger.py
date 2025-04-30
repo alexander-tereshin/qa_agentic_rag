@@ -1,6 +1,6 @@
 import logging
 
-from cv_generator.config.config import settings
+from resume_generator.config.config import settings
 
 
 def setup_logging() -> logging.Logger:

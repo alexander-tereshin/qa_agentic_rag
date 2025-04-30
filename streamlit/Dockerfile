@@ -1,7 +1,7 @@
-FROM python:3.13
+FROM python:3.13-slim
 
 WORKDIR /app
 
 COPY streamlit streamlit
 
-RUN pip install streamlit_chat streamlit streamlit_pdf_viewer python-dotenv
+RUN pip install streamlit python-dotenv pydantic

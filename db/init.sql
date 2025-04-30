@@ -1,8 +1,10 @@
-CREATE TABLE IF NOT EXISTS resumes (
+DROP TABLE IF EXISTS resumes;
+
+CREATE TABLE resumes (
     id SERIAL PRIMARY KEY,
     name TEXT NOT NULL,
     gender TEXT,
-    occupation TEXT,
+    title TEXT,
     summary TEXT,
     contact_info JSONB,
     skills TEXT[],
