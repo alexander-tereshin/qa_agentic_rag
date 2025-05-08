@@ -11,12 +11,13 @@ def main() -> None:
         page_title="HR Assistant Chatbot",
     )
     option = st.sidebar.selectbox(
-        "Выберите тип агента",
-        ("Smolagents", "PydanticAI"),
+        "Выберите фреймворк",
+        ("Smolagents", "PydanticAI", "Собственная Реализация"),
     )
     agent_map = {
         "Smolagents": "smollagents",
         "PydanticAI": "pydantic_ai_agent",
+        "Собственная Реализация": "self_written_agent",
     }
     st.session_state.selected_agent = agent_map[option]
 

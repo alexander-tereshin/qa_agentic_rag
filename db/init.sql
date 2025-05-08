@@ -1,6 +1,4 @@
-DROP TABLE IF EXISTS resumes;
-
-CREATE TABLE resumes (
+CREATE TABLE IF NOT EXISTS resumes (
     id SERIAL PRIMARY KEY,
     name TEXT NOT NULL,
     gender TEXT,

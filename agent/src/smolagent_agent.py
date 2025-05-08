@@ -1,8 +1,11 @@
+import json
 import os
 from typing import Any
 
 import psycopg2
-from smolagents import CodeAgent, OpenAIServerModel, tool
+import sqlparse
+from openai import OpenAI
+from smolagents import OpenAIServerModel, ToolCallingAgent, tool
 
 
 db_params = {
@@ -15,70 +18,123 @@ db_params = {
 
 
 @tool
-def sql_engine(query: str) -> str:
-    """
-    Execute an arbitrary SQL statement against the **resumes** table and return the result as a string.
+def validate_sql_query(query: str) -> str:
+    """Check the syntax of a SQL query without executing it on the table. Useful for safe validation.
 
     Args:
-        query (str): A valid SELECT PostgreSQL statement to execute.
-            • For SELECT queries, add `LIMIT 100` (recommended) to avoid huge result sets.
-            • Quote column names with double quotes if they contain uppercase letters or non-ASCII symbols.
+        query (str): The SQL query to validate.
 
     Returns:
-        str:
-            • If the statement yields rows (e.g. SELECT), a stringified Python
-              list of tuples, e.g.
-              ``"[ (1, 'Зыкова Валерия Кузьминична', 'женский', ...), ... ]"```
+        str: A message indicating whether the query is syntactically valid or describing the syntax error.
 
-    Available tables:
-        - resumes
-        Table Schema for 'resumes':
+    """
+    conn = psycopg2.connect(**db_params)
+    try:
+        with conn.cursor() as cursor:
+            cursor.execute("EXPLAIN " + query)
+    except psycopg2.Error as e:
+        return f"Ошибка в SQL-запросе: {e!s}"
+    finally:
+        conn.close()
+    return "Запрос синтаксически корректен."
+
+
+@tool
+def get_unique_column_values(column: str) -> str:
+    """Return a sorted list of unique values from a given column in the 'resumes' table.
+
+    Args:
+        column (str): The column name to extract unique values from.
+
+    Returns:
+        str: JSON-encoded list of unique values or error message if the column is invalid.
+
+    """
+    allowed_columns = {"id", "name", "gender", "title", "summary", "languages", "skills", "certifications", "hobbies"}
+
+    if column not in allowed_columns:
+        return f"Error: Column '{column}' is not allowed for unique value extraction."
+
+    query = f'SELECT DISTINCT "{column}" FROM resumes ORDER BY "{column}"'  # noqa: S608
+
+    conn = None
+    try:
+        conn = psycopg2.connect(**db_params)
+        with conn.cursor() as cursor:
+            cursor.execute(query)
+            values = cursor.fetchall()
+            return json.dumps([v[0] for v in values], ensure_ascii=False)
+    except psycopg2.Error as e:
+        return f"Database error: {e!s}"
+    finally:
+        if conn:
+            conn.close()
+
+
+@tool
+def sql_engine(query: str) -> str:
+    """Execute validated SQL SELECT queries on the 'resumes' table and returns results as a JSON string.
+
+    Table Schema for 'resumes':
         - id (integer)              - primary key
         - contact_info (jsonb)      - {"email": "...", "phone": "...", ...}
         - experience (jsonb)        - list of work-experience blocks
         - education (jsonb)         - list of education blocks
         - portfolio (jsonb)         - list of projects {"name", "link", "description"}
-        - languages (ARRAY)         - ['Русский – родной', 'Английский – B2', ...]
-        - skills (ARRAY)            - ['Kubernetes', 'Python', ...]
-        - certifications (ARRAY)     - certificates
-        - hobbies (ARRAY)           - hobbies
-        - name (text)               - full name (UTF-8)
-        - gender (text)             - «женский», «мужской»,
-        - title (text)              - current/target role (nullable)
-        - summary (text)            - short profile with description  of position
-
-    First 5 rows from 'resumes':
-        id | name | gender | title | summary | contact_info | skills | experience | education | languages | certifications | hobbies | portfolio
-        1 | Зыкова Валерия Кузьминична | женский | Mobile Developer | Опытный мобильный разработчик с 5-летним стажем в разработке и оптимизации мобильных приложений. Обладаю глубоким пониманием современных технологий и платформ, таких как iOS и Android. Сильные навыки в проектировании, разработке и тестировании приложений, а также в работе в команде и управлении проектами. Ищу возможность применить свои навыки и знания в динамичной и инновационной компании. | {'email': 'valeriya.zykova@example.com', 'phone': '+7 (808) 262-35-84', 'github': 'github.com/valeriya-zykova', 'linkedin': 'linkedin.com/in/valeriya-zykova', 'location': 'Чехия'} | ['Swift', 'Kotlin', 'React Native', 'Firebase', 'Git', 'Agile/Scrum', 'UX/UI Design', 'RESTful APIs', 'CI/CD', 'Test-Driven Development'] | [{'company': 'TechSolutions', 'end_date': '2023-05-31', 'job_title': 'Mobile Developer', 'start_date': '2018-06-01', 'achievements': ['Разработала и запустила 3 мобильных приложения для iOS и Android, которые достигли более 100 000 загрузок.', 'Оптимизировала производительность приложений, сократив время загрузки на 30%.', 'Внедрила CI/CD пайплайны, что сократило время развертывания на 50%.', 'РаЬотала в мультидисциплинарной команде, координируя усилия разработчиков, дизайнеров и тестировщиков.']}] | [{'degree': 'Бакалавр информационных технологий', 'details': 'Специализация: Программная инженерия', 'end_date': '2017-06-30', 'start_date': '2013-09-01', 'institution': 'Санкт-Петербургский Политехнический Университет'}] | ['Русский – родной', 'Английский – B2', 'Чешский – A2'] | ['Google Certified Professional Cloud Developer', 'Apple Developer Program'] | ['Фотография', 'Путешествия', 'Программирование в свободное время'] | [{'link': 'github.com/valeriya-zykova/TravelApp', 'name': 'TravelApp', 'description': 'Мобильное приложение для планирования путешествий. Использовались технологии: Swift, Firebase, MapKit. Приложение позволяет пользователям создавать маршруты, добавлять точки интереса и делиться планами с друзьями.'}, {'link': 'github.com/valeriya-zykova/FitnessTracker', 'name': 'FitnessTracker', 'description': 'Приложение для отслеживания физической активности. Использовались технологии: Kotlin, Google Fit API, Room Database. Приложение позволяет пользователям отслеживать свои тренировки, устанавливать цели и получать уведомления о прогрессе.'}]
-        2 | Фадеева Татьяна Кузьминична | женский | Product Owner | Опытный Product Owner с 9-летним стажем в управлении продуктами и командами. Сильные навыки в аджайл-методологиях, стратегическом планировании и взаимодействии с ключевыми заинтересованными сторонами. Успешно запустила и масштабировала несколько продуктов, достигнув значительных бизнес-результатов и улучшив пользовательский опыт. | {'email': 'tatyana.fadeeva@example.com', 'phone': '8 764 180 2753', 'github': 'github.com/tatyana-fadeeva', 'linkedin': 'linkedin.com/in/tatyana-fadeeva', 'location': 'Мали'} | ['Agile и Scrum', 'Product Roadmap', 'User Story Mapping', 'Stakeholder Management', 'Data-Driven Decision Making', 'Leadership', 'Team Building', 'UX/UI Design Basics', 'Jira', 'Confluence'] | [{'company': 'Tech Solutions', 'end_date': '2023', 'job_title': 'Product Owner', 'start_date': '2018', 'achievements': ['Успешно запустила и масштабировала продукт для автоматизации бизнес-процессов, что привело к увеличению эффективности на 30% и росту выручки на 25%.', 'Разработала и внедрила стратегию улучшения пользовательского опыта, что повысило удовлетворенность клиентов на 20%.', 'Создала и поддерживала продукт-бэклог, обеспечивая четкое понимание приоритетов и целей команды.', 'Сотрудничала с ключевыми заинтересованными сторонами, включая руководство и технические команды, для выработки согласованных решений.']}, {'company': 'Innovatech', 'end_date': '2018', 'job_title': 'Product Manager', 'start_date': '2014', 'achievements': ['Управляла жизненным циклом продукта от идеи до запуска, обеспечивая своевременное выполнение всех этапов.', 'Разработала и внедрила методику оценки и анализа пользовательского поведения, что позволило оптимизировать функциональность продукта и повысить конверсию на 15%.', 'Организовала и проводила регулярные встречи с командой разработки, обеспечивая эффективное взаимодействие и выполнение спринтов.']}] | [{'degree': 'Магистр', 'details': 'Менеджмент', 'end_date': '2012', 'start_date': '2007', 'institution': 'Московский Государственный Университет'}] | ['Русский – родной', 'Английский – B2'] | ['Certified Scrum Product Owner (CSPO)', 'Google Analytics – Advanced'] | ['Путешествия', 'Фотография', 'Чтение книг по управлению продуктами'] | [{'link': 'github.com/tatyana-fadeeva/automation-project', 'name': 'Автоматизация бизнес-процессов', 'description': 'Разработка и запуск продукта для автоматизации бизнес-процессов, который повысил эффективность работы компании на 30% и увеличил выручку на 25%.'}, {'link': 'github.com/tatyana-fadeeva/ux-improvement', 'name': 'Улучшение пользовательского опыта', 'description': 'Проект по улучшению пользовательского опыта, который повысил удовлетворенность клиентов на 20% и увеличил конверсию на 15%.'}]
-        3 | Горбачева Раиса Александровна | женский | Firmware Engineer | Опытный Firmware Engineer с 4 годами опыта в разработке и оптимизации встроенного программного обеспечения для различных устройств. Обладаю глубоким пониманием архитектуры микроконтроллеров и встраиваемых систем, а также сильными навыками в области C/C++ и Python. Имею успешный опыт работы в команде и управления проектами, что позволяет эффективно достигать поставленных целей. | {'email': 'raisa.gorbacheva@example.com', 'phone': '8 940 043 58 95', 'github': 'github.com/raisa-gorbacheva', 'linkedin': 'linkedin.com/in/raisa-gorbacheva', 'location': 'Индонезия'} | ['C/C++', 'Python', 'RTOS (FreeRTOS, Zephyr)', 'Microcontrollers (ARM, AVR)', 'Firmware Development', 'Debugging (JTAG, GDB)', 'Version Control (Git)', 'Agile Methodologies', 'Problem Solving', 'Team Collaboration'] | [{'company': 'Tech Innovations', 'end_date': '2023', 'job_title': 'Firmware Engineer', 'start_date': '2019', 'achievements': ['Разработала и внедрила firmware для IoT-устройств, что позволило увеличить производительность на 20% и снизить энергопотребление на 15%.', 'Успешно завершила проект по миграции legacy firmware на современные микроконтроллеры, сократив время разработки на 30%.', 'Создала и поддерживала документацию по разработке firmware, что улучшило процесс передачи знаний и сократило время наboarding новых сотрудников.']}] | [{'degree': 'Бакалавр', 'details': 'Специальность: Информатика и вычислительная техника', 'end_date': '2018', 'start_date': '2014', 'institution': 'Московский государственный университет'}] | ['Русский – родной', 'Английский – B2'] | ['Certified Firmware Developer (CFD) – 2021'] | ['Программирование микроконтроллеров', 'Путешествия', 'Фотография'] | [{'link': 'github.com/raisa-gorbacheva/iot-gateway-firmware', 'name': 'IoT Gateway Firmware', 'description': 'Разработка firmware для IoT-шлюза на базе ARM Cortex-M4. Использовались FreeRTOS, C/C++, и протоколы MQTT и CoAP. Проект позволил обеспечить надежную связь между устройствами и облачной платформой.'}, {'link': 'github.com/raisa-gorbacheva/low-power-sensor-node', 'name': 'Low-Power Sensor Node', 'description': 'Разработка firmware для низкоэнергетического датчика на базе AVR. Использовались оптимизации энергопотребления, такие как deep sleep режимы и энергоэффективные алгоритмы. Проект позволил увеличить время работы устройства от одной батареи на 50%.'}]
-        4 | Маргарита Кирилловна Дорофеева | женский | DevOps Engineer | Опытный DevOps Engineer с 2 годами опыта в автоматизации инфраструктуры, оптимизации CI/CD пайплайнов и внедрении DevOps практик. Обладаю сильными навыками в работе с Kubernetes, Docker, и облачными платформами. Способна эффективно сотрудничать с командами разработки и операций, обеспечивая надежность и масштабируемость систем. | {'email': 'margarita.dorofeeva@example.com', 'phone': '8 (234) 422-6002', 'github': 'github.com/margarita-dorofeeva', 'linkedin': 'linkedin.com/in/margarita-dorofeeva', 'location': 'Эстония'} | ['Kubernetes', 'Docker', 'CI/CD (Jenkins, GitLab CI)', 'AWS', 'Terraform', 'Linux', 'Git', 'Python', 'Problem-solving', 'Teamwork'] | [{'company': 'TechSolutions', 'end_date': '2023', 'job_title': 'DevOps Engineer', 'start_date': '2021', 'achievements': ['Автоматизировала CI/CD пайплайны с использованием Jenkins, сократив время развертывания на 30%.', 'Внедрила мониторинг и логирование с помощью Prometheus и ELK Stack, улучшив видимость и управляемость инфраструктуры.', 'Настроила высокодоступную и масштабируемую инфраструктуру на AWS, снизив затраты на 20%.']}] | [{'degree': 'Бакалавр информационных технологий', 'details': 'Специализация: DevOps и облачные технологии', 'end_date': '2021', 'start_date': '2017', 'institution': 'Эстонский Технический Университет'}] | ['Русский – родной', 'Английский – B2'] | ['AWS Certified Solutions Architect – Associate', 'Google Cloud Professional DevOps Engineer'] | ['Программирование на Python', 'Путешествия', 'Фитнес'] | [{'link': 'github.com/margarita-dorofeeva/ci-cd-automation', 'name': 'Автоматизация CI/CD пайплайнов', 'description': 'Проект по автоматизации CI/CD пайплайнов с использованием Jenkins и GitLab CI. Включает скрипты для автоматического тестирования, сборки и развертывания приложений.'}, {'link': 'github.com/margarita-dorofeeva/monitoring-logging', 'name': 'Мониторинг и логирование', 'description': 'Проект по внедрению мониторинга и логирования с использованием Prometheus и ELK Stack. Включает конфигурации для сбора и анализа метрик и логов.'}]
-        5 | Большакова Акулина Феликсовна | женский | Site Reliability Engineer | Опытный Site Reliability Engineer с 9-летним стажем в обеспечении высокой доступности и надежности систем. Специализируюсь на автоматизации процессов, мониторинге производительности и оптимизации инфраструктуры. Обладаю сильными навыками в области DevOps и системного администрирования, что позволяет эффективно решать сложные технические задачи и улучшать производительность систем. | {'email': 'akulina.bolshakova@example.com', 'phone': '+7 (710) 484-9177', 'github': 'github.com/akulina-bolshakova', 'linkedin': 'linkedin.com/in/akulina-bolshakova', 'location': 'Коста-Рика'} | ['DevOps', 'CI/CD', 'Kubernetes', 'Docker', 'Prometheus', 'Grafana', 'Terraform', 'AWS', 'Python', 'Linux', 'Problem-solving', 'Agile'] | [{'company': 'TechSolutions Inc.', 'end_date': '2023', 'job_title': 'Site Reliability Engineer', 'start_date': '2018', 'achievements': ['Разработала и внедрила CI/CD пайплайны, что сократило время развертывания на 40%.', 'Автоматизировала мониторинг и оповещения с использованием Prometheus и Grafana, повысив эффективность обнаружения и реагирования на инциденты на 30%.', 'Оптимизировала инфраструктуру с использованием Terraform, снизив затраты на облако на 25%.']}, {'company': 'WebTech Ltd.', 'end_date': '2018', 'job_title': 'System Administrator', 'start_date': '2014', 'achievements': ['Управление и поддержка серверной инфраструктуры на 100+ серверах, обеспечивающих бесперебойную работу критически важных систем.', 'Разработка и внедрение политик безопасности, что снизило количество инцидентов на 50%.', 'Внедрение контейнеризации с использованием Docker, улучшив масштабируемость и производительность приложений.']}] | [{'degree': 'Бакалавр информационных технологий', 'details': 'Специализация: Системное администрирование и сетевые технологии', 'end_date': '2013', 'start_date': '2009', 'institution': 'Национальный университет информационных технологий'}] | ['Русский – родной', 'Английский – C1'] | ['AWS Certified DevOps Engineer – Professional', 'Google Cloud Professional Cloud Architect'] | ['Путешествия', 'Программирование на Python', 'Фотография'] | [{'link': 'github.com/akulina-bolshakova/monitoring-automation', 'name': 'Автоматизация мониторинга и оповещений', 'description': 'Разработка и внедрение системы мониторинга с использованием Prometheus и Grafana для улучшения обнаружения и реагирования на инциденты.'}, {'link': 'github.com/akulina-bolshakova/terraform-optimization', 'name': 'Оптимизация инфраструктуры с использованием Terraform', 'description': 'Проект по оптимизации инфраструктуры с использованием Terraform, снизивший затраты на облако на 25%.'}]
+        - languages (ARRAY)         - e.g. ['Русский – родной', 'Английский – B2']
+        - skills (ARRAY)            - e.g. ['Kubernetes', 'Python']
+        - certifications (ARRAY)    - certificate names
+        - hobbies (ARRAY)           - list of hobbies
+        - name (text)               - full name
+        - gender (text)             - gender
+        - title (text)              - current/target job title
+        - summary (text)            - resume summary/about section
 
     Examples:
-        >>> sql_engine(\"""
+        >>> sql_engine(\'''
             SELECT id, name, title
             FROM resumes
             WHERE 'Kubernetes' = ANY(skills)
             ORDER BY id
             LIMIT 5;
-        \""")
-        "[ (4, 'Маргарита Кирилловна Дорофеева', 'DevOps Engineer'), ... ]"
+        \''')
+        "[ [4, 'Маргарита Кирилловна Дорофеева', 'DevOps Engineer'], ... ]"
 
     Important:
-        • Never pass raw user input directly into *query*; always parameterize
-          to avoid SQL injection.
-        • Avoid requesting more than 1 000 rows per call to keep responses
-          manageable for the language model.
+        • Only SELECT queries are allowed.
+        • Never pass raw user input directly without validation.
+        • Avoid requesting more than 1000 rows per call.
+        • Double-quote column names if they contain uppercase or non-ASCII characters.
 
-    """  # noqa: D212, D300, E501
+    Args:
+        query (str): A valid SQL SELECT query.
+
+    Returns:
+        str:
+            - JSON-encoded list of result rows for SELECT queries.
+            - Or an error message string for invalid or forbidden queries.
+
+    """
+    # GUARDRAIL
+    try:
+        parsed = sqlparse.parse(query)
+        if len(parsed) != 1:
+            return "Error: Only one SQL statement is allowed."
+
+        stmt = parsed[0]
+        if stmt.get_type() != "SELECT":
+            return "Error: Only SELECT queries are permitted."
+
+    except Exception as e:  # noqa: BLE001
+        return f"Error while parsing SQL query: {e!s}"
+
+    ###
     output = ""
-    conn = psycopg2.connect(**db_params)
+    conn = None
     try:
         conn = psycopg2.connect(**db_params)
         with conn.cursor() as cursor:
             cursor.execute(query)
-
             try:
                 rows: list[tuple[Any, ...]] = cursor.fetchall()
                 output = rows
@@ -86,11 +142,59 @@ def sql_engine(query: str) -> str:
                 output = "Query executed successfully, but no results to fetch."
 
         conn.commit()
+
+    except psycopg2.errors.SyntaxError as e:
+        output = f"Syntax error in SQL query: {e!s}"
+    except psycopg2.Error as e:
+        output = f"Database error: {e!s}"
     finally:
-        if conn is not None:
+        if conn:
             conn.close()
 
-    return str(output)
+    return json.dumps(output, ensure_ascii=False)
+
+
+@tool
+def refine_and_validate_answer(sql_query: str, raw_result: str, draft_answer: str) -> str:
+    """Переписывает ответ, делает его более понятным и проверяет, соответствует ли он данным SQL-запроса.
+
+    Args:
+        sql_query (str): Исходный SQL-запрос.
+        raw_result (str): JSON-строка с результатами запроса.
+        draft_answer (str): Черновой ответ.
+
+    Returns:
+        str: Улучшенный и проверенный финальный ответ.
+
+    """
+    prompt = f"""
+Ты — эксперт по данным. Вот запрос, результат и черновой ответ:
+
+SQL-запрос:
+{sql_query}
+
+Результат запроса (JSON):
+{raw_result}
+
+Черновой ответ:
+"{draft_answer}"
+
+Твоя задача:
+1. Проверь, что черновой ответ действительно соответствует данным.
+2. Дай очень прямой ответ без объяснений
+3. Используй тот же язык, что и в черновике (русский или английский).
+
+Финальный ответ:
+"""
+    try:
+        client = OpenAI(api_key=os.getenv("AGENT_LLM_API_TOKEN"), base_url=os.getenv("AGENT_LLM_API_URL"))
+        response = client.chat.completions.create(
+            model=os.getenv("AGENT_LLM_API_MODEL"),
+            messages=[{"role": "user", "content": prompt}],
+        )
+        return response.choices[0].message.content.strip()
+    except Exception as e:  # noqa: BLE001
+        return f"Ошибка при генерации финального ответа: {e}"
 
 
 model = OpenAIServerModel(
@@ -100,15 +204,22 @@ model = OpenAIServerModel(
     flatten_messages_as_text=True,
 )
 
-smolagent_agent = CodeAgent(
-    tools=[sql_engine],
+smolagent_agent = ToolCallingAgent(
+    tools=[sql_engine, get_unique_column_values],
     model=model,
-    planning_interval=2,
+    planning_interval=5,
     description=(
-        "You are an HR assistant. The user asks questions about resumes. "
-        "Always use the sql_engine tool for query to resumes table to get the answer."
-        "Never make up data — always query the database using sql_engine. "
-        "Respond briefly, using only the necessary information from the database."
+        """
+        You are an HR assistant helping users analyze resume data stored in a PostgreSQL database.
+        Always detect the user's query language and respond in the same language (if the question is in Russian, answer
+        in Russian). Use the sql_engine tool to execute queries and retrieve data.
+        Optionally, `use get_unique_column_values` to extract distinct values from specific columns when needed.
+        Never fabricate or assume data—answers must be strictly based on SQL query results.
+        Provide short, factual answers directly tied to the data.
+        Casual greetings are allowed, but all answers must be precise and data-focused.
+        Do not discuss topics unrelated to resumes.
+        If asked 'Who are you?', reply: 'I am an HR assistant.'
+        """
     ),
-    max_steps=5,
+    max_steps=10,
 )
