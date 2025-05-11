@@ -1,4 +1,4 @@
-from src.components import agent_chat
+from tabs import qa_bot_page, resume_manager_page
 
 import streamlit as st
 
@@ -6,22 +6,20 @@ import streamlit as st
 def main() -> None:
     st.set_page_config(
         layout="centered",
-        page_icon="streamlit/hse_logo.png",
+        page_icon="assets/hse_logo.png",
         initial_sidebar_state="expanded",
         page_title="HR Assistant Chatbot",
     )
-    option = st.sidebar.selectbox(
-        "Выберите фреймворк",
-        ("Smolagents", "PydanticAI", "Собственная Реализация"),
-    )
-    agent_map = {
-        "Smolagents": "smollagents",
-        "PydanticAI": "pydantic_ai_agent",
-        "Собственная Реализация": "self_written_agent",
-    }
-    st.session_state.selected_agent = agent_map[option]
 
-    agent_chat()
+    st.sidebar.title("Навигация")
+    selected_page = st.sidebar.selectbox("Выберите модуль", ("🤖 QA Бот", "📄 Управление резюме"))
+
+    st.title("HR Assistant Chatbot")
+
+    if selected_page == "📄 Управление резюме":
+        resume_manager_page.render()
+    elif selected_page == "🤖 QA Бот":
+        qa_bot_page.render()
 
 
 if __name__ == "__main__":

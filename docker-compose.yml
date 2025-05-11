@@ -74,7 +74,7 @@ services:
     env_file:
       - .env
     environment:
-      - POSTGRES_HOST=postgres
+      POSTGRES_HOST: postgres
     volumes:
       - ./data/resumes_json:/app/data/resumes_json
     command: ["python", "load_initial_data.py"]
@@ -93,6 +93,8 @@ services:
     environment:
       AGENT_HOST: host.docker.internal
       AGENT_PORT: ${AGENT_PORT}
+      CV_GENERATOR_HOST: resume_generator
+      CV_GENERATOR_PORT: ${CV_GENERATOR_PORT}
       PYTHONUNBUFFERED: 1
       STREAMLIT_SERVER_HEADLESS: true
       STREAMLIT_SERVER_ENABLECORS: false

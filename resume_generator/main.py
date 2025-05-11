@@ -36,9 +36,3 @@ async def generate_resume(candidate: CandidateInput) -> dict:
     logger.info(f"Received request to generate resume for {candidate.name}")
     asyncio.create_task(utils.generate_resume(logger, candidate.model_dump()))  # noqa: RUF006
     return {"status": "started", "message": f"Resume generation started for {candidate.name}"}
-
-
-if __name__ == "__main__":
-    import uvicorn
-
-    uvicorn.run("cv_generator.main:app", host="0.0.0.0", port=8000, reload=True)  # noqa: S104

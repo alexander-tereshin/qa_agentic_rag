@@ -4,4 +4,4 @@ WORKDIR /app
 
 COPY streamlit streamlit
 
-RUN pip install streamlit python-dotenv pydantic
+RUN pip install streamlit streamlit-pdf-viewer pydantic

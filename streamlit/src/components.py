@@ -1,13 +1,11 @@
 import os
+from pathlib import Path
 
 import requests
-from dotenv import load_dotenv
 from src.models import AgentQueryRequest
+from streamlit_pdf_viewer import pdf_viewer
 
 import streamlit as st
-
-
-load_dotenv()
 
 
 AGENT_HOST = os.getenv("AGENT_HOST")
@@ -45,8 +43,6 @@ def get_agent_response(request: AgentQueryRequest) -> str:
 
 
 def agent_chat() -> None:
-    st.markdown("### Agentic RAG")
-
     if "conversation_history_agentic_rag" not in st.session_state:
         st.session_state.conversation_history_agentic_rag = []
 
@@ -70,3 +66,21 @@ def agent_chat() -> None:
 
     if st.session_state.conversation_history_agentic_rag and st.button("Очистить чат 🗑️"):
         clear_chat("agent")
+
+
+def list_pdfs(directory: str) -> list:
+    """Get list of all pdf in specific dir."""
+    return [f.name for f in Path(directory).iterdir() if f.is_file() and f.suffix.lower() == ".pdf"]
+
+
+def preview_pdf(pdf_filename: str, directory: str) -> None:
+    """Preview pdfs in specific dir and render in Streamlit UI."""
+    pdf_path = Path(directory) / pdf_filename
+
+    if pdf_path.exists():
+        with pdf_path.open("rb") as pdf_file:
+            st.download_button(label="📄 Скачать PDF", data=pdf_file, file_name=pdf_filename, mime="application/pdf")
+
+        pdf_viewer(str(pdf_path))
+    else:
+        st.error(f"PDF-файл '{pdf_filename}' не найден.")
