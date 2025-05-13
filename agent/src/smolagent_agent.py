@@ -187,9 +187,9 @@ SQL-запрос:
 Финальный ответ:
 """
     try:
-        client = OpenAI(api_key=os.getenv("AGENT_LLM_API_TOKEN"), base_url=os.getenv("AGENT_LLM_API_URL"))
+        client = OpenAI(api_key=os.getenv("LLM_API_TOKEN"), base_url=os.getenv("LLM_API_URL"))
         response = client.chat.completions.create(
-            model=os.getenv("AGENT_LLM_API_MODEL"),
+            model=os.getenv("LLM_API_MODEL"),
             messages=[{"role": "user", "content": prompt}],
         )
         return response.choices[0].message.content.strip()
@@ -198,9 +198,9 @@ SQL-запрос:
 
 
 model = OpenAIServerModel(
-    model_id=os.getenv("AGENT_LLM_API_MODEL"),
-    api_base=os.getenv("AGENT_LLM_API_URL"),
-    api_key=os.getenv("AGENT_LLM_API_TOKEN"),
+    model_id=os.getenv("LLM_API_MODEL"),
+    api_base=os.getenv("LLM_API_URL"),
+    api_key=os.getenv("LLM_API_TOKEN"),
     flatten_messages_as_text=True,
 )
 

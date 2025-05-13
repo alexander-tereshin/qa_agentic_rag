@@ -6,7 +6,7 @@ import streamlit as st
 def main() -> None:
     st.set_page_config(
         layout="centered",
-        page_icon="assets/hse_logo.png",
+        page_icon="streamlit/assets/hse_logo.png",
         initial_sidebar_state="expanded",
         page_title="HR Assistant Chatbot",
     )

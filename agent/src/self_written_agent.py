@@ -3,20 +3,17 @@ import os
 from typing import Literal
 
 import psycopg2
-from dotenv import load_dotenv
 from openai import Client
 from psycopg2.extras import RealDictCursor
 from pydantic import BaseModel, Field
 
 
-load_dotenv()
-
 logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)s] %(message)s", datefmt="%Y-%m-%d %H:%M:%S")
 logger = logging.getLogger(__name__)
 
-llm_api_url = os.getenv("AGENT_LLM_API_URL")
-api_key = os.getenv("AGENT_LLM_API_TOKEN")
-model = os.getenv("AGENT_LLM_API_MODEL")
+llm_api_url = os.getenv("LLM_API_URL")
+api_key = os.getenv("LLM_API_TOKEN")
+model = os.getenv("LLM_API_MODEL")
 
 
 client = Client(base_url=llm_api_url, api_key=api_key)
@@ -117,8 +114,8 @@ def analyze_user_message(message: str) -> AgentAction:
 
     system_prompt = (
         "Ты — AI-ассистент, генерирующий SQL-запросы на основе пользовательских запросов.\n"
-        "Ниже — схема базы данных PostgreSQL:\n\n"
-        f"{full_schema}\n\n"
+        "Ниже — схема базы данных PostgreSQL:\n"
+        f"{full_schema}\n"
         "1) Проанализируй запрос.\n"
         "2) Если он опасен или модифицирует данные — установи is_dangerous=true и опиши reasoning.\n"
         "3) Если безопасен — сгенерируй корректный SELECT и верни его в поле sql_query.\n"
@@ -148,7 +145,6 @@ def analyze_user_message(message: str) -> AgentAction:
 def format_sql_result_with_llm(user_message: str, sql_query: str, raw_result: str) -> str:
     """Форматирует результат SQL-запроса в человекочитаемый ответ с помощью LLM."""
     system_prompt = """Ты — AI-ассистент, который помогает пользователю, отвечая на вопросы, связанные с SQL.
-
         Вот твоя задача:
         1. Прочитай запрос пользователя.
         2. Оцени сгенерированный SQL-код.

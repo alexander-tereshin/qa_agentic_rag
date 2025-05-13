@@ -39,7 +39,7 @@ def get_agent_response(request: AgentQueryRequest) -> str:
         data = response.json()
         return data.get("response", "⚠️ Ответ отсутствует.")
     except requests.exceptions.RequestException as e:
-        return f"❌ Ошибка при запросе к API: {e!s}"
+        return f"❌ Ошибка при запросе к API {AGENT_API_URL}: {e!s}"
 
 
 def agent_chat() -> None:
@@ -69,8 +69,8 @@ def agent_chat() -> None:
 
 
 def list_pdfs(directory: str) -> list:
-    """Get list of all pdf in specific dir."""
-    return [f.name for f in Path(directory).iterdir() if f.is_file() and f.suffix.lower() == ".pdf"]
+    """Get list of all pdf in specific dir, sorted by filename."""
+    return sorted([f.name for f in Path(directory).iterdir() if f.is_file() and f.suffix.lower() == ".pdf"])
 
 
 def preview_pdf(pdf_filename: str, directory: str) -> None:
@@ -80,7 +80,6 @@ def preview_pdf(pdf_filename: str, directory: str) -> None:
     if pdf_path.exists():
         with pdf_path.open("rb") as pdf_file:
             st.download_button(label="📄 Скачать PDF", data=pdf_file, file_name=pdf_filename, mime="application/pdf")
-
         pdf_viewer(str(pdf_path))
     else:
         st.error(f"PDF-файл '{pdf_filename}' не найден.")

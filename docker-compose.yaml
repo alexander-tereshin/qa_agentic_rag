@@ -1,0 +1,165 @@
+services:
+  resume_generator:
+    build:
+      context: .
+      dockerfile: resume_generator/Dockerfile
+    container_name: resume_generator
+    env_file:
+      - .env
+    environment:
+      LLM_API_URL: ${LLM_API_URL}
+      LLM_API_MODEL: ${LLM_API_MODEL}
+      LLM_API_TOKEN: ${LLM_API_TOKEN}
+      POSTGRES_HOST: ${POSTGRES_HOST}
+      POSTGRES_PORT: ${POSTGRES_PORT}
+      POSTGRES_DB: ${POSTGRES_DB}
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+    volumes:
+      - ./data:/app/resume_generator/data
+    command: ["uv", "run", "--no-sync", "uvicorn", "resume_generator.main:app", "--host", "0.0.0.0", "--port", "${CV_GENERATOR_PORT}", "--reload"]
+    ports:
+      - "${CV_GENERATOR_PORT}:${CV_GENERATOR_PORT}"
+    restart: always
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:${CV_GENERATOR_PORT}/healthcheck"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
+
+  resume_parser:
+    build:
+      context: .
+      dockerfile: resume_parser/Dockerfile
+    container_name: resume_parser
+    env_file:
+      - .env
+    environment:
+      LLM_API_URL: ${LLM_API_URL}
+      LLM_API_MODEL: ${LLM_API_MODEL}
+      LLM_API_TOKEN: ${LLM_API_TOKEN}
+      POSTGRES_HOST: ${POSTGRES_HOST}
+      POSTGRES_PORT: ${POSTGRES_PORT}
+      POSTGRES_DB: ${POSTGRES_DB}
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+    command: ["uv", "run", "--no-sync", "uvicorn", "resume_parser.main:app", "--host", "0.0.0.0", "--port", "${RESUME_PARSER_PORT}", "--reload"]
+    ports:
+      - "${RESUME_PARSER_PORT}:${RESUME_PARSER_PORT}"
+    restart: always
+    depends_on:
+      postgres:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:${RESUME_PARSER_PORT}/healthcheck"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
+
+  agent:
+    build:
+      context: .
+      dockerfile: agent/Dockerfile
+    container_name: agent
+    env_file:
+      - .env
+    environment:
+      AGENT_LOG_LEVEL: ${AGENT_LOG_LEVEL}
+      LLM_API_URL: ${LLM_API_URL}
+      LLM_API_MODEL: ${LLM_API_MODEL}
+      LLM_API_TOKEN: ${LLM_API_TOKEN}
+      POSTGRES_HOST: ${POSTGRES_HOST}
+      POSTGRES_PORT: ${POSTGRES_PORT}
+      POSTGRES_DB: ${POSTGRES_DB}
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+    command: ["uv", "run", "--no-sync", "uvicorn", "agent.main:app", "--host", "0.0.0.0", "--port", "${AGENT_PORT}", "--reload"]
+    ports:
+      - "${AGENT_PORT}:${AGENT_PORT}"
+    restart: always
+    depends_on:
+      postgres:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:${AGENT_PORT}/healthcheck"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
+
+  postgres:
+    image: postgres:14
+    container_name: postgres
+    env_file:
+      - .env
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB}
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+    volumes:
+      # - postgres_data:/var/lib/postgresql/data
+      - ./db/init.sql:/docker-entrypoint-initdb.d/init.sql:ro
+    ports:
+      - "${POSTGRES_PORT}:${POSTGRES_PORT}"
+    restart: always
+    healthcheck:
+      test: ["CMD", "pg_isready", "-U", "${POSTGRES_USER}", "-d", "${POSTGRES_DB}"]
+      interval: 30s
+      retries: 3
+      start_period: 10s
+      timeout: 5s
+
+  data_loader:
+    build:
+      context: .
+      dockerfile: db/Dockerfile
+    container_name: data_loader
+    env_file:
+      - .env
+    environment:
+      POSTGRES_HOST: ${POSTGRES_HOST}
+      POSTGRES_PORT: ${POSTGRES_PORT}
+      POSTGRES_DB: ${POSTGRES_DB}
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+    volumes:
+      - ./data/resumes_json:/app/data/resumes_json
+    command: ["python", "load_initial_data.py"]
+    restart: "on-failure"
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  streamlit:
+    build:
+      context: .
+      dockerfile: streamlit/Dockerfile
+    container_name: streamlit
+    command: ["streamlit", "run", "streamlit/streamlit_app.py", "--server.port=${STREAMLIT_PORT}"]
+    restart: on-failure
+    volumes:
+      - ./data:/app/data
+    ports:
+      - "${STREAMLIT_PORT}:${STREAMLIT_PORT}"
+    environment:
+      AGENT_HOST: ${AGENT_HOST}
+      AGENT_PORT: ${AGENT_PORT}
+      CV_GENERATOR_HOST: ${CV_GENERATOR_HOST}
+      CV_GENERATOR_PORT: ${CV_GENERATOR_PORT}
+      RESUME_PARSER_HOST: ${RESUME_PARSER_HOST}
+      RESUME_PARSER_PORT: ${RESUME_PARSER_PORT}
+      PYTHONUNBUFFERED: 1
+      STREAMLIT_SERVER_HEADLESS: true
+      STREAMLIT_SERVER_ENABLECORS: false
+    depends_on:
+      agent:
+        condition: service_healthy
+      resume_generator:
+        condition: service_healthy
+      resume_parser:
+        condition: service_healthy
+
+volumes:
+  postgres_data:

@@ -2,6 +2,7 @@ import asyncio
 from typing import Annotated
 
 from fastapi import FastAPI, Query
+from fastapi.responses import JSONResponse
 
 from resume_generator.src import utils
 from resume_generator.src.logger import setup_logging
@@ -27,12 +28,25 @@ async def healthcheck() -> dict:
 @app.get("/generate_random_resume", tags=["Generation"])
 async def generate_resumes(n: Annotated[int, Query(description="Number of resumes to generate")] = ...) -> dict:
     logger.info(f"Received request to generate {n} resumes")
-    asyncio.create_task(utils.generate_resume_task(n, logger))  # noqa: RUF006
+    asyncio.create_task(utils.generate_random_resume_task(n, logger))  # noqa: RUF006
     return {"status": "started", "message": f"Generation of {n} resumes started"}
 
 
 @app.post("/generate_resume", tags=["Generation"])
 async def generate_resume(candidate: CandidateInput) -> dict:
     logger.info(f"Received request to generate resume for {candidate.name}")
-    asyncio.create_task(utils.generate_resume(logger, candidate.model_dump()))  # noqa: RUF006
-    return {"status": "started", "message": f"Resume generation started for {candidate.name}"}
+
+    try:
+        pdf_filename, resume_json = await utils.generate_resume(logger, candidate.model_dump())
+    except Exception as e:
+        logger.exception("Ошибка генерации резюме")
+        return JSONResponse(
+            status_code=500,
+            content={"status": "error", "message": f"Ошибка генерации: {e!s}"},
+        )
+    utils.insert_resumes_to_db(resume=resume_json, logger=logger)
+    return {
+        "status": "success",
+        "message": f"Резюме успешно сгенерировано для {candidate.name}",
+        "pdf_filename": pdf_filename,
+    }

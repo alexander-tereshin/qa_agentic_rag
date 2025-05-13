@@ -5,11 +5,8 @@ WORKDIR /app
 RUN set -ex \
     && apt update \
     && apt install -y --no-install-recommends \
-        ca-certificates \
-        curl \
-        texlive-full \
-        latexmk \
-        fontconfig \
+        ca-certificates\
+        curl\
     && apt autoremove -y \
     && apt clean\
     && rm -rf /var/lib/apt/lists/*
@@ -22,4 +19,4 @@ COPY pyproject.toml uv.lock ./
 
 RUN uv sync --no-dev --frozen
 
-COPY resume_generator resume_generator
+COPY resume_parser resume_parser

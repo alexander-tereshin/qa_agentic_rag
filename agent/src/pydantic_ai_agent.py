@@ -102,11 +102,11 @@ def sql_engine(query: str) -> str:
 
 openai_provider = OpenAIProvider(
     openai_client=AsyncOpenAI(
-        base_url=os.getenv("AGENT_LLM_API_URL"),
-        api_key=os.getenv("AGENT_LLM_API_TOKEN"),
+        base_url=os.getenv("LLM_API_URL"),
+        api_key=os.getenv("LLM_API_TOKEN"),
     )
 )
-openai_model = OpenAIModel(os.getenv("AGENT_LLM_API_MODEL"), provider=openai_provider)
+openai_model = OpenAIModel(os.getenv("LLM_API_MODEL"), provider=openai_provider)
 
 
 sql_tool = Tool(

@@ -6,7 +6,6 @@ readme = "README.md"
 requires-python = ">=3.13"
 dependencies = [
     "faker>=37.1.0",
-    "fastapi>=0.115.12",
     "jinja2>=3.1.6",
     "latexbuild>=0.2.2",
     "openai>=1.74.0",
@@ -16,16 +15,17 @@ dependencies = [
     "pydantic-settings>=2.8.1",
     "smolagents>=1.13.0",
     "uvicorn>=0.34.0",
-    "python-dotenv>=1.1.0",
     "pydantic-ai>=0.1.3",
     "sqlparse>=0.5.3",
-    "streamlit-pdf-viewer>=0.0.23",
+    "pymupdf>=1.25.5",
+    "fastapi>=0.115.12",
 ]
 
 [dependency-groups]
 dev = [
     "jupyter>=1.1.1",
     "pre-commit>=4.2.0",
+    "python-dotenv>=1.1.0",
     "ruff>=0.11.4",
 ]
 
