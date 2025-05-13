@@ -54,7 +54,7 @@ def generate_resume_tab() -> None:
         )
         with st.spinner(f"Ожидание генерации резюме для {candidate.name}..."):
             try:
-                response = requests.post(url=cv_generation_url, json=candidate.model_dump(), timeout=30)
+                response = requests.post(url=cv_generation_url, json=candidate.model_dump(), timeout=120)
                 if response.status_code == HTTP_OK:
                     result = response.json()
                     st.success(result.get("message", "Резюме сгенерировано успешно!"))
