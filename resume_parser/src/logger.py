@@ -1,11 +1,12 @@
 import logging
-import os
+
+from resume_parser.config.config import settings
 
 
 def setup_logging() -> logging.Logger:
     """Set up the application"s logging configuration."""
     logger = logging.getLogger(__name__)
-    log_level = getattr(logging, os.environ["AGENT_LOG_LEVEL"])
+    log_level = getattr(logging, settings.log_level)
     logger.setLevel(log_level)
     formatter = logging.Formatter("%(asctime)s - %(levelname)s - %(message)s")
     console_handler = logging.StreamHandler()

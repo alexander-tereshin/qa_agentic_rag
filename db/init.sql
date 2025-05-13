@@ -2,7 +2,7 @@ CREATE TABLE IF NOT EXISTS resumes (
     id SERIAL PRIMARY KEY,
     name TEXT NOT NULL,
     gender TEXT,
-    occupation TEXT,
+    title TEXT,
     summary TEXT,
     contact_info JSONB,
     skills TEXT[],

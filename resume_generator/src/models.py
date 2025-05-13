@@ -3,7 +3,14 @@ from typing import Literal
 import jinja2
 from pydantic import BaseModel, Field
 
-from cv_generator.config.config import PROJECT_ROOT, Path, settings
+from resume_generator.config.config import PROJECT_ROOT, Path, settings
+
+
+class CandidateInput(BaseModel):
+    name: str = Field(..., description="Имя кандидата")
+    desired_job: str = Field(..., description="Желаемая должность")
+    years_of_experience: int = Field(..., description="Опыт работы в годах")
+    location: str = Field(..., description="Местоположение")
 
 
 class Experience(BaseModel):
