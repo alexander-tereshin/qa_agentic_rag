@@ -1,4 +1,4 @@
-# QA-система на основе Agentic RAG для обработки естественно-языковых запросов к структурированным данным / Agentic RAG-based Question-Answering System for Natural Language Queries over Structured Data
+# QA-система на основе Agentic RAG для обработки естественно-языковых запросов к структурированным данным
 
 ## Постановка задачи
 
