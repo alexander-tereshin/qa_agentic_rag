@@ -28,6 +28,9 @@ dev = [
     "python-dotenv>=1.1.0",
     "ruff>=0.11.4",
 ]
+research = [
+    "kaggle>=1.7.4.5",
+]
 
 [tool.ruff]
 fix = true
