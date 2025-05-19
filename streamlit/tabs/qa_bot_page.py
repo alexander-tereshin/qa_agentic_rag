@@ -4,7 +4,7 @@ import streamlit as st
 
 
 def render() -> None:
-    with st.expander("⚙️ Выбор фреймворка (по желанию)", expanded=False):
+    with st.expander("⚙️ Выбор фреймворка", expanded=False):
         option = st.selectbox(
             "Выберите фреймворк:",
             ("Собственная Реализация", "Smolagents", "PydanticAI"),

@@ -37,7 +37,7 @@ INSERT INTO resumes (
     skills, experience, education,
     languages, certifications, hobbies, portfolio
 )
-VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s);
 """
 
 cursor = conn.cursor()

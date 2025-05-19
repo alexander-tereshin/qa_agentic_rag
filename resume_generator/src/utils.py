@@ -169,7 +169,7 @@ async def generate_random_resume_task(
     logger: logging.Logger,
 ) -> None:
     logger.info(f"Received request to generate {n} resumes")
-
+    logger.info(f"LLM API URL {config.settings.llm_api_url}")
     llm_api_client = AsyncOpenAI(
         base_url=config.settings.llm_api_url, api_key=config.settings.llm_api_token.get_secret_value()
     )
