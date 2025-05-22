@@ -15,6 +15,8 @@ llm_api_url = os.getenv("LLM_API_URL")
 api_key = os.getenv("LLM_API_TOKEN")
 model = os.getenv("LLM_API_MODEL")
 
+logger.info(f"LLM_API_URL: {llm_api_url}")
+
 
 client = Client(base_url=llm_api_url, api_key=api_key)
 

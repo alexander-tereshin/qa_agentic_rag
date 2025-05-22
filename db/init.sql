@@ -1,8 +1,8 @@
-CREATE TABLE IF NOT EXISTS resumes (
+CREATE TABLE resumes (
     id SERIAL PRIMARY KEY,
-    name TEXT NOT NULL,
-    gender TEXT,
-    title TEXT,
+    name VARCHAR(255) NOT NULL,
+    gender VARCHAR(50),
+    title VARCHAR(255),
     summary TEXT,
     contact_info JSONB,
     skills TEXT[],
@@ -11,5 +11,6 @@ CREATE TABLE IF NOT EXISTS resumes (
     languages TEXT[],
     certifications TEXT[],
     hobbies TEXT[],
-    portfolio JSONB
+    portfolio JSONB,
+    CONSTRAINT unique_name UNIQUE (name)
 );
